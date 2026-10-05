@@ -9,9 +9,14 @@
     <header>
         <strong>HD Transit</strong>
         <nav>
-            <a href="index.php">Accueil</a>
-            <a href="inscription.php">Créer un compte</a>
-            <a href="connexion.php">Se connecter</a>
+            <a href="<?= URL_SITE ?>/index.php">Accueil</a>
+            <?php if (isset($_SESSION['id_client'])): ?>
+                <a href="<?= URL_SITE ?>/client/accueil.php">Mon espace</a>
+                <a href="<?= URL_SITE ?>/deconnexion.php">Se déconnecter</a>
+            <?php else: ?>
+                <a href="<?= URL_SITE ?>/inscription.php">Créer un compte</a>
+                <a href="<?= URL_SITE ?>/connexion.php">Se connecter</a>
+            <?php endif; ?>
         </nav>
     </header>
     <main>

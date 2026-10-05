@@ -23,6 +23,19 @@ class Client
         return $requete->fetchColumn() > 0;
     }
 
+    // Renvoie le client qui a cet email, ou null s'il n'existe pas
+    public function trouverParEmail(string $email): ?array
+    {
+        $requete = $this->pdo->prepare('SELECT * FROM client WHERE email = :email');
+        $requete->execute(['email' => $email]);
+        $client = $requete->fetch();
+
+        if ($client === false) {
+            return null;
+        }
+        return $client;
+    }
+
     // Enregistre un nouveau client (le mot de passe est haché avant l'enregistrement)
     public function creer(string $nom, string $prenom, string $email, string $telephone, string $motDePasse): void
     {

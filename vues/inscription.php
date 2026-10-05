@@ -3,7 +3,7 @@
 <h1>Créer un compte</h1>
 
 <?php if ($succes): ?>
-    <p>Votre compte a bien été créé. Vous pouvez maintenant vous connecter.</p>
+    <p>Votre compte a bien été créé. Vous pouvez maintenant <a href="connexion.php">vous connecter</a>.</p>
 <?php endif; ?>
 
 <?php if (!empty($erreurs)): ?>

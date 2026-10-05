@@ -3,6 +3,7 @@
 // Contrôleur : inscription d'un nouveau client
 // =============================================================
 
+require_once 'includes/session.php';
 require_once 'modeles/Client.php';
 
 $erreurs = [];
