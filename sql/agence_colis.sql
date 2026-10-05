@@ -7,6 +7,8 @@
 --  au niveau du serveur, sans avoir sélectionné de base).
 -- =====================================================================
 
+SET NAMES utf8mb4;
+
 DROP DATABASE IF EXISTS agence_colis;
 CREATE DATABASE agence_colis CHARACTER SET utf8mb4;
 USE agence_colis;
