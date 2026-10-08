@@ -141,6 +141,44 @@ class Colis
         return true;
     }
 
+    // Suivi public : renvoie les informations NON personnelles d'un colis, ou null
+    public function trouverParNumeroSuivi(string $numeroSuivi): ?array
+    {
+        $requete = $this->pdo->prepare(
+            'SELECT c.id_colis, c.numero_suivi, c.date_enregistrement,
+                    s.libelle AS statut,
+                    ad.ville AS ville_depart, ad.pays AS pays_depart,
+                    aa.ville AS ville_arrivee, aa.pays AS pays_arrivee
+             FROM colis c
+             JOIN statut s  ON s.id_statut = c.id_statut
+             JOIN agence ad ON ad.id_agence = c.id_agence_depart
+             JOIN agence aa ON aa.id_agence = c.id_agence_arrivee
+             WHERE c.numero_suivi = :numero'
+        );
+        $requete->execute(['numero' => $numeroSuivi]);
+        $colis = $requete->fetch();
+
+        if ($colis === false) {
+            return null;
+        }
+        return $colis;
+    }
+
+    // Renvoie les étapes du colis (statut + date), de la plus ancienne à la plus récente
+    public function listerHistorique(int $idColis): array
+    {
+        $requete = $this->pdo->prepare(
+            'SELECT s.libelle AS statut, h.date_changement
+             FROM historique_statut h
+             JOIN statut s ON s.id_statut = h.id_statut
+             WHERE h.id_colis = :id_colis
+             ORDER BY h.date_changement, h.id_historique'
+        );
+        $requete->execute(['id_colis' => $idColis]);
+
+        return $requete->fetchAll();
+    }
+
     // Fabrique un numéro de suivi unique, par exemple HD2026-7K3P9Q
     private function genererNumeroSuivi(): string
     {
