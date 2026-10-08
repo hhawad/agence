@@ -5,9 +5,8 @@
 <p>Vous êtes connecté(e) à votre espace client HD Transit.</p>
 
 <ul>
+    <li><a href="nouveau-colis.php">Envoyer un colis</a></li>
     <li><a href="destinataires.php">Mon carnet de destinataires</a></li>
 </ul>
-
-<p>Bientôt ici : vos colis.</p>
 
 <?php require __DIR__ . '/../commun/footer.php'; ?>

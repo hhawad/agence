@@ -25,6 +25,21 @@ class Destinataire
         return $requete->fetchAll();
     }
 
+    // Renvoie un destinataire seulement s'il appartient à ce client, sinon null
+    public function trouverPourClient(int $idDestinataire, int $idClient): ?array
+    {
+        $requete = $this->pdo->prepare(
+            'SELECT * FROM destinataire WHERE id_destinataire = :id AND id_client = :id_client'
+        );
+        $requete->execute(['id' => $idDestinataire, 'id_client' => $idClient]);
+        $destinataire = $requete->fetch();
+
+        if ($destinataire === false) {
+            return null;
+        }
+        return $destinataire;
+    }
+
     // Ajoute un destinataire dans le carnet d'un client
     public function ajouter(int $idClient, string $nom, string $prenom, string $telephone, string $ville, string $pays): void
     {
