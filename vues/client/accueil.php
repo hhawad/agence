@@ -6,6 +6,7 @@
 
 <ul>
     <li><a href="nouveau-colis.php">Envoyer un colis</a></li>
+    <li><a href="mes-colis.php">Mes colis</a></li>
     <li><a href="destinataires.php">Mon carnet de destinataires</a></li>
 </ul>
 
