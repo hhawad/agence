@@ -10,7 +10,10 @@
         <strong>HD Transit</strong>
         <nav>
             <a href="<?= URL_SITE ?>/index.php">Accueil</a>
-            <?php if (isset($_SESSION['id_client'])): ?>
+            <?php if (isset($_SESSION['id_agent'])): ?>
+                <a href="<?= URL_SITE ?>/agent/accueil.php">Espace agent</a>
+                <a href="<?= URL_SITE ?>/deconnexion.php">Se déconnecter</a>
+            <?php elseif (isset($_SESSION['id_client'])): ?>
                 <a href="<?= URL_SITE ?>/client/accueil.php">Mon espace</a>
                 <a href="<?= URL_SITE ?>/deconnexion.php">Se déconnecter</a>
             <?php else: ?>
