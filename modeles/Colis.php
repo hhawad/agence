@@ -7,10 +7,13 @@ require_once __DIR__ . '/Database.php';
 
 class Colis
 {
-    // Identifiant du statut « Créé » dans la table statut
-    private const STATUT_CREE = 1;
-    // Identifiant du statut « Annulé »
-    private const STATUT_ANNULE = 6;
+    // Identifiants des statuts (table statut)
+    public const STATUT_CREE = 1;
+    public const STATUT_DEPOSE = 2;
+    public const STATUT_TRANSIT = 3;
+    public const STATUT_ARRIVE = 4;
+    public const STATUT_RETIRE = 5;
+    public const STATUT_ANNULE = 6;
 
     private PDO $pdo;
 
@@ -177,6 +180,179 @@ class Colis
         $requete->execute(['id_colis' => $idColis]);
 
         return $requete->fetchAll();
+    }
+
+    // ---------------------------------------------------------
+    //  Méthodes de l'espace agent
+    // ---------------------------------------------------------
+
+    // Colis à traiter : départs (Créé, Déposé) et arrivées (En transit, Arrivé).
+    // Avec $idAgence = null (administrateur), on renvoie ceux de toutes les agences.
+    public function listerATraiter(?int $idAgence): array
+    {
+        $sql = 'SELECT c.numero_suivi, c.date_enregistrement, c.id_statut,
+                       s.libelle AS statut,
+                       ad.ville AS ville_depart, aa.ville AS ville_arrivee
+                FROM colis c
+                JOIN statut s  ON s.id_statut = c.id_statut
+                JOIN agence ad ON ad.id_agence = c.id_agence_depart
+                JOIN agence aa ON aa.id_agence = c.id_agence_arrivee
+                WHERE c.id_statut IN (1, 2, 3, 4)';
+        $parametres = [];
+
+        if ($idAgence !== null) {
+            $sql .= ' AND ((c.id_agence_depart = :agence1 AND c.id_statut IN (1, 2))
+                       OR (c.id_agence_arrivee = :agence2 AND c.id_statut IN (3, 4)))';
+            $parametres = ['agence1' => $idAgence, 'agence2' => $idAgence];
+        }
+        $sql .= ' ORDER BY c.date_enregistrement';
+
+        $requete = $this->pdo->prepare($sql);
+        $requete->execute($parametres);
+
+        return $requete->fetchAll();
+    }
+
+    // Toutes les informations d'un colis pour l'agent (y compris client et destinataire)
+    public function trouverPourAgent(string $numeroSuivi): ?array
+    {
+        $requete = $this->pdo->prepare(
+            'SELECT c.*,
+                    s.libelle AS statut,
+                    cl.nom AS nom_client, cl.prenom AS prenom_client, cl.telephone AS telephone_client,
+                    d.nom AS nom_destinataire, d.prenom AS prenom_destinataire,
+                    d.telephone AS telephone_destinataire, d.ville AS ville_destinataire,
+                    ad.nom AS agence_depart, ad.pays AS pays_depart,
+                    aa.nom AS agence_arrivee, aa.pays AS pays_arrivee
+             FROM colis c
+             JOIN statut s       ON s.id_statut = c.id_statut
+             JOIN client cl      ON cl.id_client = c.id_client
+             JOIN destinataire d ON d.id_destinataire = c.id_destinataire
+             JOIN agence ad      ON ad.id_agence = c.id_agence_depart
+             JOIN agence aa      ON aa.id_agence = c.id_agence_arrivee
+             WHERE c.numero_suivi = :numero'
+        );
+        $requete->execute(['numero' => $numeroSuivi]);
+        $colis = $requete->fetch();
+
+        if ($colis === false) {
+            return null;
+        }
+        return $colis;
+    }
+
+    // Historique complet pour l'agent : étape, date, agent qui l'a faite, commentaire
+    public function listerHistoriqueAgent(int $idColis): array
+    {
+        $requete = $this->pdo->prepare(
+            'SELECT s.libelle AS statut, h.date_changement, h.commentaire,
+                    a.prenom AS prenom_agent, a.nom AS nom_agent
+             FROM historique_statut h
+             JOIN statut s     ON s.id_statut = h.id_statut
+             LEFT JOIN agent a ON a.id_agent = h.id_agent
+             WHERE h.id_colis = :id_colis
+             ORDER BY h.date_changement, h.id_historique'
+        );
+        $requete->execute(['id_colis' => $idColis]);
+
+        return $requete->fetchAll();
+    }
+
+    // Validation au guichet : pesée, prix définitif, paiement, statut « Déposé en agence »
+    public function valider(int $idColis, float $poidsReel, float $prixKg, bool $estPaye, int $idAgent): bool
+    {
+        $montant = round($poidsReel * $prixKg, 2);
+
+        $this->pdo->beginTransaction();
+        try {
+            $requete = $this->pdo->prepare(
+                'UPDATE colis
+                 SET poids_reel = :poids, prix_kg_applique = :prix_kg, montant = :montant,
+                     est_paye = :paye, id_statut = :depose
+                 WHERE id_colis = :id AND id_statut = :cree'
+            );
+            $requete->execute([
+                'poids'   => $poidsReel,
+                'prix_kg' => $prixKg,
+                'montant' => $montant,
+                'paye'    => $estPaye ? 1 : 0,
+                'depose'  => self::STATUT_DEPOSE,
+                'id'      => $idColis,
+                'cree'    => self::STATUT_CREE,
+            ]);
+
+            // Aucune ligne modifiée : le colis n'est plus au statut « Créé »
+            if ($requete->rowCount() === 0) {
+                $this->pdo->rollBack();
+                return false;
+            }
+
+            $this->ajouterHistorique($idColis, self::STATUT_DEPOSE, $idAgent,
+                'Colis pesé en agence : ' . number_format($poidsReel, 2, ',', ' ') . ' kg');
+
+            $this->pdo->commit();
+        } catch (PDOException $e) {
+            $this->pdo->rollBack();
+            throw $e;
+        }
+
+        return true;
+    }
+
+    // Fait passer un colis d'un statut au suivant (ex. Déposé → En transit)
+    public function changerStatut(int $idColis, int $statutActuel, int $nouveauStatut, int $idAgent): bool
+    {
+        $this->pdo->beginTransaction();
+        try {
+            $requete = $this->pdo->prepare(
+                'UPDATE colis SET id_statut = :nouveau WHERE id_colis = :id AND id_statut = :actuel'
+            );
+            $requete->execute([
+                'nouveau' => $nouveauStatut,
+                'id'      => $idColis,
+                'actuel'  => $statutActuel,
+            ]);
+
+            if ($requete->rowCount() === 0) {
+                $this->pdo->rollBack();
+                return false;
+            }
+
+            $this->ajouterHistorique($idColis, $nouveauStatut, $idAgent, null);
+
+            $this->pdo->commit();
+        } catch (PDOException $e) {
+            $this->pdo->rollBack();
+            throw $e;
+        }
+
+        return true;
+    }
+
+    // Enregistre le paiement d'un colis déjà pesé
+    public function marquerPaye(int $idColis): bool
+    {
+        $requete = $this->pdo->prepare(
+            'UPDATE colis SET est_paye = 1 WHERE id_colis = :id AND montant IS NOT NULL AND est_paye = 0'
+        );
+        $requete->execute(['id' => $idColis]);
+
+        return $requete->rowCount() > 0;
+    }
+
+    // Ajoute une ligne dans l'historique (utilisée à l'intérieur d'une transaction)
+    private function ajouterHistorique(int $idColis, int $idStatut, ?int $idAgent, ?string $commentaire): void
+    {
+        $requete = $this->pdo->prepare(
+            'INSERT INTO historique_statut (id_colis, id_statut, id_agent, commentaire)
+             VALUES (:id_colis, :id_statut, :id_agent, :commentaire)'
+        );
+        $requete->execute([
+            'id_colis'    => $idColis,
+            'id_statut'   => $idStatut,
+            'id_agent'    => $idAgent,
+            'commentaire' => $commentaire,
+        ]);
     }
 
     // Fabrique un numéro de suivi unique, par exemple HD2026-7K3P9Q
