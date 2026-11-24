@@ -14,6 +14,7 @@ $nom = '';
 $prenom = '';
 $email = '';
 $telephone = '';
+$dateNaissance = '';
 
 // Le formulaire a-t-il été envoyé ?
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -23,6 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $prenom = trim($_POST['prenom'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $telephone = trim($_POST['telephone'] ?? '');
+    $dateNaissance = trim($_POST['date_naissance'] ?? '');
     $motDePasse = $_POST['mot_de_passe'] ?? '';
     $confirmation = $_POST['confirmation'] ?? '';
 
@@ -32,6 +34,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     if (mb_strlen($nom) > 50 || mb_strlen($prenom) > 50 || mb_strlen($email) > 100 || mb_strlen($telephone) > 20) {
         $erreurs[] = 'Un des champs est trop long.';
+    }
+    // La date doit exister (pas de 31/02) et être dans le passé
+    $date = DateTime::createFromFormat('Y-m-d', $dateNaissance);
+    if ($date === false || $date->format('Y-m-d') !== $dateNaissance || $date > new DateTime()) {
+        $erreurs[] = 'La date de naissance n\'est pas valide.';
     }
     if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $erreurs[] = 'L\'adresse email n\'est pas valide.';
@@ -51,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // 4. Tout est correct : on enregistre le client
     if (empty($erreurs)) {
-        $client->creer($nom, $prenom, $email, $telephone, $motDePasse);
+        $client->creer($nom, $prenom, $email, $telephone, $dateNaissance, $motDePasse);
         $succes = true;
 
         // On vide le formulaire
@@ -59,6 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $prenom = '';
         $email = '';
         $telephone = '';
+        $dateNaissance = '';
     }
 }
 

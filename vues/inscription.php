@@ -36,6 +36,11 @@
                value="<?= htmlspecialchars($telephone) ?>">
     </p>
     <p>
+        <label for="date_naissance">Date de naissance *</label><br>
+        <input type="date" id="date_naissance" name="date_naissance" required
+               value="<?= htmlspecialchars($dateNaissance) ?>">
+    </p>
+    <p>
         <label for="mot_de_passe">Mot de passe * (8 caractères minimum)</label><br>
         <input type="password" id="mot_de_passe" name="mot_de_passe" minlength="8" required>
     </p>

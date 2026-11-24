@@ -63,6 +63,7 @@ CREATE TABLE client (
   email            VARCHAR(100) NOT NULL,
   mot_de_passe     VARCHAR(255) NOT NULL,   -- mot de passe haché (password_hash)
   telephone        VARCHAR(20)  NOT NULL,
+  date_naissance   DATE         DEFAULT NULL,
   adresse          VARCHAR(255) DEFAULT NULL,
   date_inscription DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id_client),

@@ -37,19 +37,20 @@ class Client
     }
 
     // Enregistre un nouveau client (le mot de passe est haché avant l'enregistrement)
-    public function creer(string $nom, string $prenom, string $email, string $telephone, string $motDePasse): void
+    public function creer(string $nom, string $prenom, string $email, string $telephone, string $dateNaissance, string $motDePasse): void
     {
         $motDePasseHache = password_hash($motDePasse, PASSWORD_DEFAULT);
 
         $requete = $this->pdo->prepare(
-            'INSERT INTO client (nom, prenom, email, telephone, mot_de_passe)
-             VALUES (:nom, :prenom, :email, :telephone, :mot_de_passe)'
+            'INSERT INTO client (nom, prenom, email, telephone, date_naissance, mot_de_passe)
+             VALUES (:nom, :prenom, :email, :telephone, :date_naissance, :mot_de_passe)'
         );
         $requete->execute([
             'nom'          => $nom,
             'prenom'       => $prenom,
             'email'        => $email,
             'telephone'    => $telephone,
+            'date_naissance' => $dateNaissance,
             'mot_de_passe' => $motDePasseHache,
         ]);
     }
